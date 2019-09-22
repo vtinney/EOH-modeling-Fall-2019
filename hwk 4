@@ -1,0 +1,116 @@
+library(raster)
+library(rgdal)
+library(dplyr)
+library(sf)
+library(tidyverse)
+library(lubridate)
+library(sp)
+library(rgeos)
+library(geosphere)
+library(RANN)
+
+
+# Functions =========================================================================
+# Originally written by: http://www.guru-gis.net/efficient-zonal-statistics-using-r-and-gdal/
+# Adapted here
+myZonal <- function (x, z, stat, digits = 0, na.rm = TRUE, 
+                     ...) {
+  library(data.table)
+  fun <- match.fun(stat) 
+  vals <- getValues(x) 
+  zones <- round(getValues(z), digits = digits) 
+  rDT <- data.table(vals, z=zones) 
+  setkey(rDT, z) 
+  rDT[, lapply(.SD, fun, na.rm = TRUE), by=z] 
+} 
+
+ZonalPipe<- function (zone.in, raster.in, shp.out=NULL, stat){
+  require(raster)
+  require(rgdal)
+  require(plyr)
+  
+  # Load raster
+  r <- raster.in
+  # Load zone shapefile
+  shp <- zone.in
+  # Project 'zone' shapefile into the same coordinate system than the input raster
+  shp <- spTransform(shp, crs(r))
+  
+  # Add ID field to Shapefile
+  shp@data$ID<-c(1:length(shp@data[,1]))
+  
+  # Crop raster to 'zone' shapefile extent
+  r <- crop(r, extent(shp))	
+  # Rasterize shapefile
+  zone <- rasterize(shp, r, field="ID", dataType = "INT1U") # Change dataType if nrow(shp) > 255 to INT2U or INT4U
+  
+  # Zonal stats
+  Zstat<-data.frame(myZonal(r, zone, stat))
+  colnames(Zstat)<-c("ID", paste0(names(r), "_", c(1:(length(Zstat)-1)), "_",stat))
+  
+  # Merge data in the shapefile and write it
+  shp@data <- plyr::join(shp@data, Zstat, by="ID")
+  
+  if (is.null(shp.out)){
+    return(shp)
+  }else{
+    writeOGR(shp, shp.out, layer= sub("^([^.]*).*", "\\1", basename(zone.in)), driver="ESRI Shapefile")
+  }
+}
+
+#=========================================================================================
+
+# Part 1
+
+setwd("C:/Users/Veronica Tinney/Veronica Southerland Dropbox/EOH Modeling/Week 4/HW4 data/")
+list.files()
+
+hw <- readOGR(dsn=getwd(), layer='HW_points')
+
+hw.df <- data.frame(hw)
+hw.df$dd <- mdy(hw.df$Date)
+
+hw.df[order(hw.df$dd ),]
+
+# fast nearest neighbour search
+closest<- nn2(hw.df[,2:3], hw.df[1:46,2:3], k = 5, searchtype = "priority")
+
+hw2 <- cbind(hw.df,closest$nn.idx)
+names(hw2) <- c('ID','Long','Lat','Date','Number','x1','x2','opt','dd','ID2','nn1','nn2','nn3','nn4')
+
+for (i in 1:nrow(hw2)){
+hw2$nn1d[i] <- hw2$dd[hw2$nn1[i]]
+hw2$nn2d[i] <- hw2$dd[hw2$nn2[i]]
+hw2$nn3d[i] <- hw2$dd[hw2$nn3[i]]
+hw2$nn4d[i] <- hw2$dd[hw2$nn4[i]]
+hw2$nn1G[hw2$nn1d<hw2$dd] <- 'TRUE'
+hw2$nn2G[hw2$nn2d<hw2$dd] <- 'TRUE'
+hw2$nn3G[hw2$nn3d<hw2$dd] <- 'TRUE'
+hw2$nn4G[hw2$nn4d<hw2$dd] <- 'TRUE'
+}
+
+write.csv(hw2,'hw3.csv')
+
+#Part 2
+
+france <- readOGR(dsn=getwd(), layer='france')
+
+r <- raster(ncol=100, nrow=100)
+extent(r) <- extent(hw)
+rp <- rasterize(hw, r, 'Number')
+
+
+zone.in <- france
+raster.in <- rp
+
+shp2 <- ZonalPipe(zone.in, raster.in, stat="sum")
+shp2@data <- shp2@data %>% mutate(id = row.names(.))
+shp_df <- fortify(shp2, region = "id")
+shp_df <- shp_df %>% left_join(shp2@data, by = c("id"="id"))
+shp_df <- as.data.frame(shp_df)
+shp_df[,ncol(shp_df)][shp_df[,ncol(shp_df)] == 0] <- NA
+#shp_df[,ncol(shp_df)][shp_df[,ncol(shp_df)] >0.32] <- 0.32
+r.min <- min(shp_df[,ncol(shp_df)],na.rm=TRUE)
+r.max <- max(shp_df[,ncol(shp_df)],na.rm=TRUE)
+r.med <- median(shp_df[,ncol(shp_df)],na.rm=TRUE)
+colnames(shp_df)[ncol(shp_df)] <- 'hia.val'
