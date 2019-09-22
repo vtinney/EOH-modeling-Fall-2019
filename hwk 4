@@ -109,8 +109,5 @@ shp_df <- fortify(shp2, region = "id")
 shp_df <- shp_df %>% left_join(shp2@data, by = c("id"="id"))
 shp_df <- as.data.frame(shp_df)
 shp_df[,ncol(shp_df)][shp_df[,ncol(shp_df)] == 0] <- NA
-#shp_df[,ncol(shp_df)][shp_df[,ncol(shp_df)] >0.32] <- 0.32
-r.min <- min(shp_df[,ncol(shp_df)],na.rm=TRUE)
-r.max <- max(shp_df[,ncol(shp_df)],na.rm=TRUE)
-r.med <- median(shp_df[,ncol(shp_df)],na.rm=TRUE)
-colnames(shp_df)[ncol(shp_df)] <- 'hia.val'
+
+write.csv(shp_df, 'france.agg.csv')
