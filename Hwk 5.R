@@ -18,7 +18,7 @@ for (i in 1:sims){
     N2 = vector(length=times)
     N2[1] = N0
     u1 <- rnorm(times - 1,mean=0.05,sd=0.01485)
-    theta1=rnorm(times - 1,mean=0.00001,sd=0.00000296)
+    theta1=rnorm(times - 1,mean=-0.00001,sd=0.00000296)
     w1 <- rnorm(times - 1,mean=-0.00004,sd=0.00003212)
     u2 <- rnorm(times - 1,mean=0.01,sd=0.00294)
     theta2 <- rnorm(times - 1,mean=-0.000025,sd=0.00000888)
@@ -37,34 +37,34 @@ res3=list()
 res4=list()
 sims = 30
 for (i in 1:sims){
-  times = 400
-  N0 = 1000
-  N1 = vector(length = times)
-  N1[1] = N0
-  N2 = vector(length=times)
-  N2[1] = N0
+  times.x = 400
+  N0.x = 10000
+  N1.x = vector(length = times)
+  N1.x[1] = N0
+  N2.x = vector(length=times)
+  N2.x[1] = N0
 
-u1 <- rnorm(n=100,mean=0.05,sd=0.01485)
-theta1 <- rnorm(n=100,mean=-0.00001,sd=0.00000296)
-w1 <- rnorm(n=100,mean=-0.00011,sd=0.00003212)
-u2 <- rnorm(n=100,mean=0.01,sd=0.00294)
-theta2 <- rnorm(n=100,mean=-0.000025,sd=0.00000888)
-w2 <- rnorm(n=100,mean=0.00003,sd=0.000007475)
-for (t in 2:times) {
-  N1[t] = N1[t-1] + (u1[t-1]+(theta1[t-1]*N1[t-1])+(w1[t-1]*N2[t-1]))*N1[t-1]
-  N2[t] = N2[t-1] + (u2[t-1]+(w2[t-1]*N1[t-1])+(theta2[t-1]*N2[t-1]))*N2[t-1]
+u1.x <- rnorm(n=1000,mean=0.05,sd=0.01485)
+theta1.x <- rnorm(n=1000,mean=-0.00001,sd=0.00000296)
+w1.x <- rnorm(n=1000,mean=-0.00011,sd=0.00003212)
+u2.x <- rnorm(n=1000,mean=0.01,sd=0.00294)
+theta2.x <- rnorm(n=1000,mean=-0.000025,sd=0.00000888)
+w2.x <- rnorm(n=1000,mean=0.00003,sd=0.000007475)
+for (t in 2:times.x) {
+  N1.x[t] = N1.x[t-1] + (u1.x[t-1]+(theta1.x[t-1]*N1.x[t-1])+(w1.x[t-1]*N2.x[t-1]))*N1.x[t-1]
+  N2.x[t] = N2.x[t-1] + (u2.x[t-1]+(w2.x[t-1]*N1.x[t-1])+(theta2.x[t-1]*N2.x[t-1]))*N2.x[t-1]
 }
-res3[[i]]=N1
-res4[[i]]=N2
+res3[[i]]=N1.x
+res4[[i]]=N2.x
 }
 
-r1 <- data.frame(Reduce(rbind, res))
+r1 <- data.frame(Reduce(rbind,res))
 r2 <- data.frame(Reduce(rbind,res2))
 r1 <-t(r1)
 r2 <- t(r2)
-r3 <- data.frame(Reduce(rbind, res3))
+r3 <- data.frame(Reduce(rbind,res3))
 r3 <- t(r3)
-r4 <- data.frame(Reduce(rbind, res4))
+r4 <- data.frame(Reduce(rbind,res4))
 r4 <- t(r4)
 full <- cbind(r1,r2,r3,r4)
 write.csv(full, 'full.csv')
@@ -75,13 +75,13 @@ r2.m <- rowMeans(r2, na.rm=TRUE, dims=1)
 par(mfrow=c(1,2))
 
 matplot(1:times, cbind(r1.m,r2.m), type = "l", las = 1, ylab = "Population Size", 
-        xlab = "Timestep",ylim=c(500,2000),main='Case 1')
+        xlab = "Timestep",ylim=c(0,1000),main='Case 1')
 
 r3.m <- rowMeans(r3, na.rm = TRUE, dims = 1)
 r4.m <- rowMeans(r4, na.rm=TRUE, dims=1)
 
 matplot(1:times, cbind(r3.m,r4.m), type = "l", las = 1, ylab = "Population Size", 
-        xlab = "Timestep",ylim=c(0,1100),main='Case 2')
+        xlab = "Timestep",ylim=c(0,1000),main='Case 2')
 
 
 list.files()
