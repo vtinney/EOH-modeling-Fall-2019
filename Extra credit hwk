@@ -1,0 +1,61 @@
+par(mfrow=c(1,2))
+
+#///////////////////////////////////////////////////////////////////////
+# Switch
+wins <- matrix(ncol=3,nrow=1000)
+N <- c(1:1000)
+  doors<-1:3
+  win<-0
+  for(i in 1:length(N))
+  {
+    prize<-floor(runif(1,1,4))
+    guess<-floor(runif(1,1,4))
+    if(prize!=guess)
+      reveal<-doors[-c(prize,guess)]
+    else
+      reveal<-sample(doors[-c(prize,guess)],1)
+      select<-doors[-c(reveal,guess)]
+    if(select==prize)
+    {
+      win <- win+1
+    }else
+      win <- win
+      wins[i,1] <- win
+      wins[i,2] <- wins[i,1]/N[i]
+      wins[i,3] <- mean(wins[1:i,2])
+  }
+
+  matplot(1:1000, wins[,3], type = "l", las = 1, ylab = "Probability of winning", 
+          xlab = "Timestep",main='Switch',col='green')
+  
+rm(wins)
+rm(win)
+
+ # Stay
+  N <- c(1:1000)
+  doors<-1:3
+  wins <- matrix(ncol=3,nrow=1000)
+  win <- 0
+  for(i in 1:length(N))
+  {
+    prize<-floor(runif(1,1,4))
+    guess<-floor(runif(1,1,4))
+    if(prize!=guess)
+      reveal<-doors[-c(prize,guess)]
+    else
+      reveal<-sample(doors[-c(prize,guess)],1)
+    select<-guess
+    if(select==prize)
+    {
+    win <- win+1
+    }else
+    win <- win
+    wins[i,1] <- win
+    wins[i,2] <- wins[i,1]/N[i]
+    wins[i,3] <- mean(wins[1:i,2])
+  }
+win/N*100
+
+matplot(1:1000, wins[,3], type = "l", las = 1, ylab = "Probability of winning", 
+        xlab = "Timestep",main='Stay',col='red')
+
