@@ -1,0 +1,67 @@
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+
+setwd("C:/Users/Veronica Tinney/Google Drive/EOH Modeling/Week 7/")
+
+# Read in two files with the matrix and the parameters
+flow <- read.csv('matrix.csv',header=FALSE)
+p <- read.csv('parameters.csv',header=FALSE)
+
+#Create indexed Volume, River flow, type and flow sums
+vol <- as.vector(p[1,])
+vol <- unname(vol)
+r.flow <- as.vector(p[2,])
+type <- as.vector(p[3,])
+type <- matrix(type)
+r.flow <- (r.flow*1000000000)/(365*24*3600)
+r.flow <- unname(r.flow)
+flow.sums <- as.vector(rowSums(flow))
+flow.sums <- matrix(flow.sums)
+flow <- data.matrix(flow)
+river <- 20
+
+#Create empty matrix with beginning concentrations of 1
+conc.x <- matrix(ncol=20,nrow=1000)
+conc.x[1,] <- 1
+
+#For loop
+
+  for (t in 2:nrow(conc.x)){
+    for(k in 1:ncol(conc.x)){
+    if(type[[k]] ==0){
+      conc.x[t,k] <- conc.x[t-1,k] +(((river*r.flow[[k]]+conc.x[t-1,] %*% flow[,k]*10^6)*0.05)
+                                  -(flow.sums[k]*10^6*conc.x[t-1,k]))/(vol[[k]]*10^16)*365*24*3600
+    }
+    else{
+      conc.x[t,k] <- conc.x[t-1,k] + (((river*r.flow[,k]+conc.x[t-1,] %*% flow[,k]*10^6) 
+                                         + 0.94*(river*r.flow[,k-2]+conc.x[t-1,] %*% flow[,k-2]*10^6-flow.sums[k-2,])
+                                          -flow.sums[k,]*10^6*conc.x[t-1,k]))/(vol[,k]*10^16)*365*24*3600
+     }
+   }
+ }
+
+#Quick plot
+matplot(1:1000,conc.x, type = "l", las = 1, ylab = "Concentration", 
+        xlab = "Timestep",ylim=c(0,2),main='Oceans')
+
+# Set up for better plot
+r1 <- as.data.frame(conc.x)
+r1$index <- 1:1000
+colnames(r1) <- c('Arc1','Arc2','Arc3','Arc4','Ant1','Ant2','Ant3','Ant4','Ind1','Ind2','Ind3',
+'Ind4','Pac1','Pac2','Pac3','Pac4','Atl1','Atl2','Atl3','Atl4','index')
+
+long_DF2 <- r1 %>% gather(Ocean, Val, "Arc1":"Atl4")
+
+# Plot in homework submission
+ggplot(long_DF2, aes(x = index, y = Val)) +
+  geom_line(aes(color = Ocean), size = 1) +
+  labs(title="Concentration in oceans over time (mmol/m3)",
+       y = "Concentration", x="Timestep")+
+theme(legend.key=element_blank(),
+      legend.position = 'bottom',
+      legend.title = element_blank(),
+      legend.key.size=unit(10,"point"))+
+  guides(colour=guide_legend(nrow=2))
+
+ggsave('oceans.png',width=8, height=5,dpi=300)
