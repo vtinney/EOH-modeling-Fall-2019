@@ -1,0 +1,124 @@
+library(raster)
+library(rgdal)
+library(dplyr)
+library(ggplot2)
+library(ggspatial)
+library(dplyr)
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(cowplot)
+
+#=========================================================================================
+
+setwd("C:/Users/Veronica Tinney/Google Drive/EOH Modeling/Project 1/")
+list.files()
+
+#Read in raster files of interpolated concentrations and convert to dataframe
+r2 <- raster("z2.tif")
+r6 <- raster("z6.tif")
+r10 <- raster("z10.tif")
+r14 <- raster("z14.tif")
+r18 <- raster("z18.tif")
+
+#Read in shapefile blocks and rasterize
+shp1 <- readOGR(dsn=getwd(), layer='caline_blocks')
+shp2 <- data.frame(shp1)
+shp3 <- rasterize(shp1,r2)
+
+# Stack all interpolations per Z level and add the block level information
+s <- stack(r2,r6,r10,r14,r18,shp3)
+s2 <- rasterToPoints(s)
+
+# Convert to a dataframe for use in MC simulations
+s2 <- data.frame(s2)
+colnames(s2)[8] <- 'block'
+df <- s2
+#=========================================================================================
+
+
+setwd('C:/Users/Veronica Tinney/Google Drive/EOH Modeling/Project 1/')
+
+#Create matrix and 1,000 simulations
+mat <- matrix(ncol=18,nrow=1000)
+N <- 1:1000
+block <- 1:16
+
+#Monte Carlo sampling concentrations 1,000 times creating 1,000 risk estimates per block
+for(i in 1:nrow(mat)){
+  for (j in 1:length(block)){
+      x <- df %>% filter(block == j)
+      
+      # For residential blocks
+    if(block == 1 | block == 2 | block == 3 | block == 4 | block == 5 |
+       block == 6 | block == 7 | block == 9 | block == 10 | block == 11 | block == 12 |
+       block == 13 | block == 14 | block == 16){
+      pm <- sample(x$z2,1)
+      pop <- round(rnorm(1,mean=30,sd=5))
+      mat[i,j] <- (pm-150)*0.001*pop
+    }
+    
+      # For commercial districts
+    if(block == 6 | block == 8 | block == 15){
+      pm1 <- sample(x$z2,1)
+      pop1 <- round(rnorm(1,mean=30,sd=5))
+      r1 <- (pm-150)*0.001*pop1
+      
+      pm2 <- sample(x$z6,1)
+      pop2<- round(rnorm(1,mean=25,sd=3))
+      r2 <- (pm-150)*0.001*pop2
+      
+      pm3 <- sample(x$z10,1)
+      pop3 <- round(rnorm(1,mean=20,sd=2))
+      r3 <- (pm-150)*0.001*pop3
+      
+      pm4 <- sample(x$z14,1)
+      pop4 <- round(rnorm(1,mean=35,sd=7))
+      r4 <- (pm-150)*0.001*pop4
+      
+      pm5 <- sample(x$z18,1)
+      pop5 <- round(rnorm(1,mean=15,sd=1))
+      r5 <- (pm-150)*0.001*pop5
+      
+      mat[i,j] <- sum(r1,r2,r3,r4,r5)
+    }
+    
+      # Get rid of negative values (from the concentrations less than 150)
+    if(mat[i,j]<0){
+      mat[i,j] == 0
+    }
+    mat[i,17] <- mat[i,j]/N[i] # Overall average
+    mat[i,18] <- mean(mat[1:i,j]) # Running average overall
+  }
+}
+
+write.csv(mat, 'simulations.per.block.csv')
+
+# Create a matrix of running averages for each block group
+mat2 <- matrix(ncol=16,nrow=1000)
+for (i in 1:nrow(mat2)){
+  for (j in 1:ncol(mat2)){
+    mat2[i,j] <- mean(mat[1:i,j])
+  }
+}
+
+write.csv(mat2, 'running.average.per.block.csv')
+
+#Plot the running averages - overall
+matplot(1:1000, mat[,18], type = "l", las = 1, ylab = "Running average risk overall", 
+        xlab = "Simulations",main='Simulations of risk for blocks overall',col='red')
+
+
+#Plot the running averages - each block
+matplot(1:1000, mat2, type = "l", las = 1, ylab = "Running average risk per block", 
+        xlab = "Simulations",main='Simulations of risk by block')
+
+
+# Mean of the total matrix
+means.mat <- colMeans(mat, na.rm = TRUE)
+
+# Mean of the block group results
+sum.per.block <- means.mat[1:16]
+
+# Sum of total cases (mean from simulations)
+sum <- sum(sum.per.block)
