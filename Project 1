@@ -50,16 +50,16 @@ for(i in 1:nrow(mat)){
       x <- df %>% filter(block == j)
       
       # For residential blocks
-    if(block == 1 | block == 2 | block == 3 | block == 4 | block == 5 |
-       block == 6 | block == 7 | block == 9 | block == 10 | block == 11 | block == 12 |
-       block == 13 | block == 14 | block == 16){
+    if(j == 1 | j == 2 | j == 3 | j == 4 | j == 5 |
+       j == 7 | j == 9 | j == 10 | j == 11 | j == 12 |
+       j == 13 | j == 14 | j == 16){
       pm <- sample(x$z2,1)
       pop <- round(rnorm(1,mean=30,sd=5))
       mat[i,j] <- (pm-150)*0.001*pop
     }
     
       # For commercial districts
-    if(block == 6 | block == 8 | block == 15){
+    if(j == 6 | j == 8 | j == 15){
       pm1 <- sample(x$z2,1)
       pop1 <- round(rnorm(1,mean=30,sd=5))
       r1 <- (pm-150)*0.001*pop1
@@ -102,6 +102,7 @@ for (i in 1:nrow(mat2)){
   }
 }
 
+
 write.csv(mat2, 'running.average.per.block.csv')
 
 #Plot the running averages - overall
@@ -114,15 +115,73 @@ matplot(1:1000, mat2, type = "l", las = 1, ylab = "Running average risk per bloc
         xlab = "Simulations",main='Simulations of risk by block')
 
 
-# Mean of the total matrix
-means.mat <- colMeans(mat, na.rm = TRUE)
-
 # Mean of the block group results
 sum.per.block <- means.mat[1:16]
 
 # Sum of total cases (mean from simulations)
 sum <- sum(sum.per.block)
 
-means.mat
+# Print aggregated results
 sum.per.block
 sum
+
+
+#////////////////////////////////////////////////////////////////////////////////
+# Zonal statistics function for calculating average PM per block group
+
+# Originally written by: http://www.guru-gis.net/efficient-zonal-statistics-using-r-and-gdal/
+# Adapted here
+myZonal <- function (x, z, stat, digits = 0, na.rm = TRUE, 
+                     ...) {
+  library(data.table)
+  fun <- match.fun(stat) 
+  vals <- getValues(x) 
+  zones <- round(getValues(z), digits = digits) 
+  rDT <- data.table(vals, z=zones) 
+  setkey(rDT, z) 
+  rDT[, lapply(.SD, fun, na.rm = TRUE), by=z] 
+} 
+
+ZonalPipe<- function (zone.in, raster.in, shp.out=NULL, stat){
+  require(raster)
+  require(rgdal)
+  require(plyr)
+  
+  # Load raster
+  r <- raster.in
+  # Load zone shapefile
+  shp <- zone.in
+  # Project 'zone' shapefile into the same coordinate system than the input raster
+  shp <- spTransform(shp, crs(r))
+  
+  # Add ID field to Shapefile
+  shp@data$ID<-c(1:length(shp@data[,1]))
+  
+  # Crop raster to 'zone' shapefile extent
+  r <- crop(r, extent(shp))	
+  # Rasterize shapefile
+  zone <- rasterize(shp, r, field="ID", dataType = "INT1U") # Change dataType if nrow(shp) > 255 to INT2U or INT4U
+  
+  # Zonal stats
+  Zstat<-data.frame(myZonal(r, zone, stat))
+  colnames(Zstat)<-c("ID", paste0(names(r), "_", c(1:(length(Zstat)-1)), "_",stat))
+  
+  # Merge data in the shapefile and write it
+  shp@data <- plyr::join(shp@data, Zstat, by="ID")
+  
+  if (is.null(shp.out)){
+    return(shp)
+  }else{
+    writeOGR(shp, shp.out, layer= sub("^([^.]*).*", "\\1", basename(zone.in)), driver="ESRI Shapefile")
+  }
+}
+
+#//////////////////////////////////////////////////////////////////////
+# Calculat the average PM per block based on the raster interpolations
+zone.in <- shp1
+raster.in <- s
+
+avg.pm <- ZonalPipe(zone.in, raster.in, stat="mean")
+avg.pm <- data.frame(avg.pm)
+View(avg.pm)
+write.csv(avg.pm, 'average.pm.per.block.csv')
