@@ -11,7 +11,7 @@ library(cowplot)
 
 #=========================================================================================
 
-setwd("C:/Users/Veronica Tinney/Google Drive/EOH Modeling/Project 1/")
+setwd("C:/Users/vtinney/Google Drive/EOH Modeling/Project 1/")
 list.files()
 
 #Read in raster files of interpolated concentrations and convert to dataframe
@@ -37,7 +37,7 @@ df <- s2
 #=========================================================================================
 
 
-setwd('C:/Users/Veronica Tinney/Google Drive/EOH Modeling/Project 1/')
+setwd('C:/Users/vtinney/Google Drive/EOH Modeling/Project 1/')
 
 #Create matrix and 1,000 simulations
 mat <- matrix(ncol=18,nrow=1000)
@@ -122,3 +122,7 @@ sum.per.block <- means.mat[1:16]
 
 # Sum of total cases (mean from simulations)
 sum <- sum(sum.per.block)
+
+means.mat
+sum.per.block
+sum
