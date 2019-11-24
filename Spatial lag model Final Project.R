@@ -62,54 +62,16 @@ data2$conc <- df1$conc[apply(mat, 1, which.min)]
 
 df1 <- data2
 
-lm1 <- lm(conc[] ~ hist[], data=df1)
-lm2 <- lm(conc[] ~ weight[], data=df1)
-lm3 <- lm(conc[] ~ smoke[], data=df1)
-lm4 <- lm(conc[] ~ dis[], data=df1)
-
 ### Auto-logistic model using 'autocov_dist' in 'spdep' package
-lm1 <- logistic.regression(df1, y='dis', x=c('hist'),
-                              autologistic=TRUE, coords=coordinates(df1), bw=5000) 
+coordinates(df1) <- ~ lon + lat
+# Full logistic
+lm1 <- logistic.regression(df1, y='dis', x=c('conc','weight','hist','smoke'),
+                           autologistic=TRUE, coords=coordinates(df1), bw=5000) 
 
-### Auto-logistic model using 'autocov_dist' in 'spdep' package
-lm2 <- logistic.regression(df1, y='dis', x=c('weight'),
-                              autologistic=TRUE, coords=coordinates(df1), bw=5000) 
-
-### Auto-logistic model using 'autocov_dist' in 'spdep' package
-lm3 <- logistic.regression(df1, y='dis', x=c('smoke'),
-                              autologistic=TRUE, coords=coordinates(df1), bw=5000) 
-
-### Auto-logistic model using 'autocov_dist' in 'spdep' package
-lm4 <- logistic.regression(df1, y='dis', x=c('conc'),
-                              autologistic=TRUE, coords=coordinates(df1), bw=5000) 
-
+lm2 <- logistic.regression(df1, y='dis', x=c('conc','weight','hist','smoke'),
+                           autologistic=FALSE, coords=coordinates(df1), bw=5000)
 #==========================================================================================
-# Assess spatial auto-correlation
-# Moran's I for residuals
 
-library(ape)
-
-  # Create the inverse distance matrix
-  df1.dists <- dist(cbind(df1$lon, df1$lat))
-  
-  df1.dists.inv = 1/df1.dists
-  df1.dists.inv <- as.matrix(df1.dists.inv)
-  diag(df1.dists.inv) <- 0
-  
-  df1.dists.inv[1:5, 1:5]
- 
-  # Compute the Moran's I statistic
-  m1 <- Moran.I(df1$weight, df1.dists.inv)
-  m2 <- Moran.I(df1$hist, df1.dists.inv)
-  m3 <- Moran.I(df1$smoke, df1.dists.inv)
-  m4 <- Moran.I(df1$dis, df1.dists.inv)
-  
-  #=================================================================================
-  # Attempt 2 - adjusting for adjacent nearest neighbors
-  
-  
-  coordinates(df1) <- ~ lon + lat
-  
   # Use K nearest neighbor to create a nearest neighbor list
   knea.df1 <- knearneigh(coordinates(df1), longlat = TRUE)
   neib.df1 <- knn2nb(knea.df1)
@@ -117,15 +79,11 @@ library(ape)
   # Get the mean of the adjacent residuals
   resnb.df1 <- sapply(neib.df1, function(x) mean(lm1$Residuals$res[x]))
   resnb.df2 <- sapply(neib.df1, function(x) mean(lm2$Residuals$res[x]))
-  resnb.df3 <- sapply(neib.df1, function(x) mean(lm3$Residuals$res[x]))
-  resnb.df4 <- sapply(neib.df1, function(x) mean(lm4$Residuals$res[x]))
   
   # Plot residuals and the mean of adjacent residuals and see there is no independence of the 
   # residuals
-  plot(lm1$Residuals$res, resnb.df1, xlab='Residuals History and Concentration', ylab='Mean adjacent residuals',col='blue')
-  plot(lm2$Residuals$res, resnb.df2, xlab='Residuals Weight and Concentration', ylab='Mean adjacent residuals',col='red')
-  plot(lm3$Residuals$res, resnb.df3, xlab='Residuals Smoking and Concentration', ylab='Mean adjacent residuals',col='green')
-  plot(lm4$Residuals$res, resnb.df4, xlab='Residuals Disease and Concentration', ylab='Mean adjacent residuals',col='purple')
+  plot(lm1$Residuals$res, resnb.df1, xlab='Residuals full model', ylab='Mean adjacent residuals',col='blue')
+  plot(lm2$Residuals$res, resnb.df2, xlab='Residuals full spatial model', ylab='Mean adjacent residuals',col='red')
   
   # Add sampling weights and compute Monte Carlo Moran's Statistic
   # MC just calculates a sample distribution
@@ -134,10 +92,5 @@ library(ape)
   
   lw.2 <- nb2listw(neib.df1)
   moran.mc(lm2$Residuals$res, lw.2, 999) 
-  
-  lw.3 <- nb2listw(neib.df1)
-  moran.mc(lm3$Residuals$res, lw.3, 999) 
-  
-  lw.4 <- nb2listw(neib.df1)
-  moran.mc(lm4$Residuals$res, lw.4, 999) 
+
   
