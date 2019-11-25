@@ -1,9 +1,4 @@
 
-/*Final Project Pubh 6199 */
-/* V Southerland & W Steen */
-/* Assess dataset for potential confounding variables */
-/* Descriptive statistics */
-/* Descriptive statistics */
 
 DM 'LOG;CLEAR';
 DM 'OUT;CLEAR';
@@ -38,6 +33,9 @@ data work;
  hist=0; if History ='Yes' then hist=1;
  dis=0; if Disease = 'Yes' then dis=1;
 
+
+ weightx=0; if Weight >=92 then weightx=1;
+
 run;
 
 /*check missing data */
@@ -68,21 +66,14 @@ run;
 
 /*Bivariate analysis - PCV criteria smoking*/
 proc logistic descending;
-model smoke=Concentration;
-title 'Criteria 1 - Concentration and smoking';
+model weightx=hist;
+title 'Criteria 1 - Weight and family history';
 run;
 
 /* Criteria #2 - Does F independently predict D among nonE (no smoking) */
 proc logistic descending; 
-model dis=log; 
- where smoke eq 0; 
-title 'Criteria #2 - Is concentration independent predictors of disease among non-smokers'; 
-run;
-quit;
-
-proc logistic descending;
-model dis=smoke; 
-where smoke eq 0;
-title 'Criteria #2 - Is smoking independent predictors of disease among non-smokers';
+model dis=hist; 
+ where weightx eq 0; 
+title 'Criteria #2 - Is family history independent predictors of disease among those under the mean weight'; 
 run;
 quit;
