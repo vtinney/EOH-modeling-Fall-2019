@@ -9,9 +9,8 @@ options nofmterr;
 /*----------------------------------------+
 +    THE GEORGE WASHINGTON UNIVERSITY     + 
 +          PUBLIC HEALTH 6199             + 
-+         Final project 				  +
-+ DATA SET REFERENCE: ACE CLINICAL TRIALS +
-+ PROGRAMMER: VERONICA TINNEY             +
++             FINAL PROJECT 		      +
++    PROGRAMMER: VERONICA SOUTHERLAND     +
 +-----------------------------------------*/
 
 OPTIONS NODATE NONUMBER LS=100;
@@ -45,6 +44,7 @@ run;
 proc contents;
 run;
 
+/*Assess distribution of variables*/
 proc freq;
 tables smoke Weight dis hist;
 run;
@@ -77,3 +77,44 @@ model dis=hist;
 title 'Criteria #2 - Is family history independent predictors of disease among those under the mean weight'; 
 run;
 quit;
+
+/* Full logistic regression */
+
+/* Correlation matrix */
+proc corr data = work;
+  var dis Concentration Weight smoke hist;
+run;
+
+/* Full logistic regression */
+PROC LOGISTIC DATA=work DESCENDING Plot= Effect;
+class smoke(ref='0') hist(ref='0')/Param= Ref;
+   model dis=hist Concentration Weight smoke/RISKLIMITS lackfit expb ;
+ODDSRATIO 'Odds ratios'  SMOKE/Diff=Ref;
+OUTPUT OUT=NEW XBETA= LINEAR P= PPROB;
+RUN;
+
+/* Output probabilities */
+PROC UNIVARIATE DATA= NEW;
+ VAR PPROB;
+RUN;
+
+/* Plot variables against log-odds */
+Proc Sgplot Data= New;
+ Loess x=Concentration y=pprob/ interpolation=linear;
+Run;
+
+Proc Sgplot Data= New;
+ Loess x=Weight y=pprob/ interpolation=linear;
+Run;
+
+Proc Sgplot Data= New;
+ Loess x=hist y=pprob/ interpolation=linear;
+Run;
+
+Proc Sgplot Data= New;
+ Loess x=Smoke y=pprob/ interpolation=linear;
+Run;
+
+* ----------------------------;
+*  E N D  O F  P R O G R A M  ;
+*-----------------------------;
