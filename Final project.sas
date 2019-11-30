@@ -82,7 +82,7 @@ quit;
 
 /* Correlation matrix */
 proc corr data = work;
-  var dis Concentration Weight smoke hist;
+  var Concentration Weight smoke hist;
 run;
 
 /* Full logistic regression */
@@ -113,6 +113,11 @@ Run;
 
 Proc Sgplot Data= New;
  Loess x=Smoke y=pprob/ interpolation=linear;
+Run;
+
+/* Assess independence*/
+Proc Sgplot Data= work;
+ scatter x=Concentration y=Weight;
 Run;
 
 * ----------------------------;
